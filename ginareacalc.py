@@ -18,82 +18,36 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- БАЗА ДАННЫХ: БИРЖИ И МОНЕТЫ ---
-PRESETS = {
-    "Binance": {
-        "BTC": {"min_grid_step": 0.2, "min_order_size": 10.0},
-        "ETH": {"min_grid_step": 0.25, "min_order_size": 10.0},
-        "BNB": {"min_grid_step": 0.3, "min_order_size": 5.0},
-        "SOL": {"min_grid_step": 0.5, "min_order_size": 5.0},
-    },
-    "Bybit": {
-        "BTC": {"min_grid_step": 0.2, "min_order_size": 5.0},
-        "ETH": {"min_grid_step": 0.25, "min_order_size": 5.0},
-        "SOL": {"min_grid_step": 0.5, "min_order_size": 2.0},
-        "XRP": {"min_grid_step": 0.5, "min_order_size": 1.0},
-        "LTC": {"min_grid_step": 0.4, "min_order_size": 3.0},
-    },
-    "OKX": {
-        "BTC": {"min_grid_step": 0.2, "min_order_size": 5.0},
-        "ETH": {"min_grid_step": 0.25, "min_order_size": 5.0},
-        "DOT": {"min_grid_step": 0.7, "min_order_size": 1.0},
-        "LINK": {"min_grid_step": 0.5, "min_order_size": 2.0},
-    },
-    # --- ВОТ ВАША НОВАЯ БИРЖА ---
-    "BMEX": {
-        "BTC": {"min_grid_step": 0.15, "min_order_size": 1.0},
-        "ETH": {"min_grid_step": 0.20, "min_order_size": 1.0},
-        "SOL": {"min_grid_step": 0.4, "min_order_size": 1.0},
-    }
-}
-
 # --- Заголовок ---
 st.title("📈 Калькулятор сеточной DCA-стратегии")
 
-# --- Боковая панель ---
+# --- Боковая панель для ручного ввода ---
 with st.sidebar:
     st.header("⚙️ Параметры стратегии")
 
-    # --- Выбор биржи (теперь с BMEX) ---
-    exchange_selection = st.selectbox(
-        "1. Выберите биржу:",
-        sorted(list(PRESETS.keys())) # Сортируем биржи по алфавиту
-    )
-
-    available_coins = list(PRESETS[exchange_selection].keys())
-    coin_selection = st.selectbox(
-        "2. Выберите монету (или 'Ручной'):",
-        ['Ручной'] + sorted(available_coins)
-    )
-
-    if coin_selection != 'Ручной':
-        preset = PRESETS[exchange_selection][coin_selection]
-        default_grid_step = preset["min_grid_step"]
-        default_order_size = preset["min_order_size"]
-        st.info(f"Для {coin_selection} на {exchange_selection} применены мин. значения.")
-    else:
-        default_grid_step = 1.0
-        default_order_size = 10.0
-
-    initial_order_size = st.number_input("Начальный ордер ($)", min_value=0.1, value=default_order_size, step=1.0)
-    safety_order_size = st.number_input("Страховочный ордер ($)", min_value=0.1, value=default_order_size, step=1.0)
+    # --- Поля для ввода данных ---
+    initial_order_size = st.number_input("Начальный ордер ($)", min_value=0.1, value=10.0, step=1.0)
+    safety_order_size = st.number_input("Страховочный ордер ($)", min_value=0.1, value=10.0, step=1.0)
     safety_orders_count = st.number_input("Max trigger number", min_value=1, value=20, step=1)
-    price_step_percent = st.number_input("Grid step (%)", min_value=0.1, value=default_grid_step, step=0.1)
+    price_step_percent = st.number_input("Grid step (%)", min_value=0.1, value=1.0, step=0.1)
     price_step_multiplier = st.number_input("Grid step ratio (%)", min_value=0.1, value=1.5, step=0.1)
 
-# --- Основная часть (код расчетов и вывода остался без изменений) ---
+# --- Основная часть: Расчеты и вывод ---
 if st.sidebar.button("🚀 Рассчитать сетку"):
-    # ... (весь код расчетов и вывода остается прежним) ...
+    # --- Логика расчетов ---
     price_step = price_step_percent / 100.0
     order_sizes = [safety_order_size] * safety_orders_count
+
     price_deviations = []
     current_step = price_step
     for _ in range(safety_orders_count):
         price_deviations.append(current_step)
         current_step *= price_step_multiplier
+
     required_deposit = initial_order_size + sum(order_sizes)
     trading_range_sum = sum(price_deviations) * 100
 
+    # --- Вывод ключевых показателей ---
     st.header("📊 Ключевые показатели стратегии")
     col1, col2 = st.columns(2)
     with col1:
@@ -111,7 +65,9 @@ if st.sidebar.button("🚀 Рассчитать сетку"):
         </div>
         """, unsafe_allow_html=True)
 
+    # --- Формирование и вывод детальной таблицы ---
     st.header("📋 Детальная таблица сетки ордеров")
+
     order_data_list = []
     cumulative_volume = initial_order_size
     cumulative_range = 0.0
@@ -133,6 +89,7 @@ if st.sidebar.button("🚀 Рассчитать сетку"):
         'Trading Range (%)': 0.0
     })
     full_grid_df = pd.DataFrame(order_data_list).set_index('№ ордера')
+
     st.dataframe(full_grid_df.style.format({
         'Размер ордера ($)': '${:,.2f}',
         'Отклонение цены (%)': '{:,.2f}%',
@@ -141,4 +98,4 @@ if st.sidebar.button("🚀 Рассчитать сетку"):
     }))
 
 else:
-    st.info("Выберите биржу и монету или задайте параметры вручную, затем нажмите 'Рассчитать сетку'.")
+    st.info("Задайте параметры в боковой панели, затем нажмите 'Рассчитать сетку'.")
