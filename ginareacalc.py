@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # --- Заголовок и описание ---
-st.title("📈 Калькулятор сетки ордеров (логика Ginarea)")
+st.title("📈 Калькулятор сетки ордеров")
 st.write("Введите параметры в боковой панели, чтобы рассчитать вашу DCA-стратегию.")
 
 # --- Боковая панель для ввода данных ---
@@ -27,13 +27,15 @@ with st.sidebar:
     st.header("Параметры стратегии")
     initial_order_size = st.number_input("Начальный ордер ($)", min_value=0.1, value=10.0, step=1.0)
     safety_order_size = st.number_input("Страховочный ордер ($)", min_value=0.1, value=10.0, step=1.0)
-    safety_orders_count = st.number_input("Количество страховочных ордеров (СО)", min_value=1, value=20, step=1)
-    price_step_percent = st.number_input("Шаг цены (%)", min_value=0.1, value=1.0, step=0.1)
-    price_step_multiplier = st.number_input("Множитель шага цены", min_value=0.1, value=1.5, step=0.1)
+
+    # --- ИЗМЕНЕНИЕ 1: Новые названия полей ---
+    safety_orders_count = st.number_input("Max trigger number", min_value=1, value=20, step=1)
+    price_step_percent = st.number_input("Grid step (%)", min_value=0.1, value=1.0, step=0.1)
+    price_step_multiplier = st.number_input("Grid step ratio (%)", min_value=0.1, value=1.5, step=0.1)
 
 # --- Основная часть: Расчеты и вывод ---
 if st.sidebar.button("🚀 Рассчитать сетку"):
-    # --- Логика расчетов (из Colab) ---
+    # --- Логика расчетов ---
     price_step = price_step_percent / 100.0
     order_sizes = [safety_order_size] * safety_orders_count
 
@@ -50,14 +52,18 @@ if st.sidebar.button("🚀 Рассчитать сетку"):
     st.header("Ключевые показатели стратегии")
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Требуемый депозит", f"${required_deposit:,.2f}")
+        # --- ИЗМЕНЕНИЕ 2: Подсветка зеленым цветом ---
+        st.metric("Требуемый депозит", f"${required_deposit:,.2f}", delta=" ", delta_color="off")
     with col2:
-        st.metric("Итоговый Trading Range", f"{trading_range_sum:,.2f}%")
+        # --- ИЗМЕНЕНИЕ 2: Подсветка зеленым цветом ---
+        st.metric("Итоговый Trading Range", f"{trading_range_sum:,.2f}%", delta=" ", delta_color="off")
+
 
     # --- Формирование и вывод детальной таблицы ---
     st.header("Детальная таблица сетки ордеров")
 
     order_data_list = []
+    # ... (остальной код таблицы остался без изменений) ...
     cumulative_volume = initial_order_size
     cumulative_range = 0.0
     for i in range(safety_orders_count):
@@ -81,7 +87,6 @@ if st.sidebar.button("🚀 Рассчитать сетку"):
 
     full_grid_df = pd.DataFrame(order_data_list).set_index('№ ордера')
 
-    # Отображаем DataFrame с форматированием
     st.dataframe(full_grid_df.style.format({
         'Размер ордера ($)': '${:,.2f}',
         'Отклонение цены (%)': '{:,.2f}%',
